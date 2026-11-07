@@ -65,11 +65,13 @@ fun StickerEditorScreen(
 ) {
     val previewBitmap by viewModel.previewBitmap.collectAsStateWithLifecycle()
     val isCutoutEnabled by viewModel.isCutoutEnabled.collectAsStateWithLifecycle()
+    val isCircleCrop by viewModel.isCircleCrop.collectAsStateWithLifecycle()
     val hasOutline by viewModel.hasOutline.collectAsStateWithLifecycle()
     val outlineWidth by viewModel.outlineWidth.collectAsStateWithLifecycle()
     val textOverlay by viewModel.textOverlay.collectAsStateWithLifecycle()
     val textColor by viewModel.textColor.collectAsStateWithLifecycle()
     val textPositionTop by viewModel.textPositionTop.collectAsStateWithLifecycle()
+    val selectedEmojis by viewModel.selectedEmojis.collectAsStateWithLifecycle()
     val isProcessing by viewModel.isProcessing.collectAsStateWithLifecycle()
 
     Scaffold(
@@ -185,21 +187,32 @@ fun StickerEditorScreen(
                         )
 
                         FilterChip(
-                            selected = hasOutline,
-                            onClick = { viewModel.toggleOutline(!hasOutline) },
-                            label = { Text("White Outline") },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Default.FormatPaint,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            },
+                            selected = isCircleCrop,
+                            onClick = { viewModel.toggleCircleCrop(!isCircleCrop) },
+                            label = { Text("Circle Crop") },
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
                             )
                         )
                     }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    FilterChip(
+                        selected = hasOutline,
+                        onClick = { viewModel.toggleOutline(!hasOutline) },
+                        label = { Text("White Outline") },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.FormatPaint,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primaryContainer
+                        )
+                    )
 
                     if (hasOutline) {
                         Spacer(modifier = Modifier.height(12.dp))
@@ -289,6 +302,63 @@ fun StickerEditorScreen(
                                         .clickable { viewModel.setTextColor(intColor) }
                                 )
                             }
+                        }
+                    }
+                }
+            }
+
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "WhatsApp Emojis",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${selectedEmojis.size}/3",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    val availableEmojis = listOf("😀", "😂", "🔥", "❤️", "👍", "😎", "🥳", "🙏", "🎉", "👏", "😮", "🥺")
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        availableEmojis.take(6).forEach { emoji ->
+                            FilterChip(
+                                selected = selectedEmojis.contains(emoji),
+                                onClick = { viewModel.toggleEmoji(emoji) },
+                                label = { Text(emoji) }
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        availableEmojis.drop(6).forEach { emoji ->
+                            FilterChip(
+                                selected = selectedEmojis.contains(emoji),
+                                onClick = { viewModel.toggleEmoji(emoji) },
+                                label = { Text(emoji) }
+                            )
                         }
                     }
                 }

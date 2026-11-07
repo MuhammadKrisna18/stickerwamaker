@@ -78,12 +78,12 @@ class StickerRepositoryImpl(
                 val packDir = File(rootDir, identifier)
                 if (!packDir.exists()) packDir.mkdirs()
 
-                val trayFileName = "tray.webp"
+                val trayFileName = "tray.png"
                 val trayFile = File(packDir, trayFileName)
 
                 if (trayBitmap != null) {
                     val scaled = scaleBitmap(trayBitmap, StickerPackValidator.TRAY_SIZE_PX, StickerPackValidator.TRAY_SIZE_PX)
-                    val bytes = compressWebp(scaled, StickerPackValidator.MAX_TRAY_FILE_SIZE_BYTES)
+                    val bytes = compressPng(scaled)
                     FileOutputStream(trayFile).use { it.write(bytes) }
                 } else {
                     val placeholder = Bitmap.createBitmap(
@@ -91,7 +91,7 @@ class StickerRepositoryImpl(
                         StickerPackValidator.TRAY_SIZE_PX,
                         Bitmap.Config.ARGB_8888
                     )
-                    val bytes = compressWebp(placeholder, StickerPackValidator.MAX_TRAY_FILE_SIZE_BYTES)
+                    val bytes = compressPng(placeholder)
                     FileOutputStream(trayFile).use { it.write(bytes) }
                 }
 
@@ -199,13 +199,15 @@ class StickerRepositoryImpl(
                     ?: throw IllegalArgumentException("Pack not found")
 
                 val packDir = File(rootDir, packIdentifier)
-                val trayFile = File(packDir, currentPack.trayImageFile)
+                val trayFileName = "tray.png"
+                val trayFile = File(packDir, trayFileName)
 
                 val scaled = scaleBitmap(bitmap, StickerPackValidator.TRAY_SIZE_PX, StickerPackValidator.TRAY_SIZE_PX)
-                val bytes = compressWebp(scaled, StickerPackValidator.MAX_TRAY_FILE_SIZE_BYTES)
+                val bytes = compressPng(scaled)
                 FileOutputStream(trayFile).use { it.write(bytes) }
 
                 val updatedPack = currentPack.copy(
+                    trayImageFile = trayFileName,
                     imageDataVersion = (currentPack.imageDataVersion.toIntOrNull()?.plus(1) ?: 1).toString()
                 )
                 savePackToDisk(updatedPack)
@@ -266,8 +268,48 @@ class StickerRepositoryImpl(
     }
 
     override fun getPackFile(packIdentifier: String, fileName: String): File? {
-        val file = File(File(rootDir, packIdentifier), fileName)
-        return if (file.exists()) file else null
+        val packDir = File(rootDir, packIdentifier)
+        val file = File(packDir, fileName)
+        if (file.exists() && file.length() > 0) return file
+
+        if (fileName == "tray.png" || fileName == "tray.webp") {
+            val existingPng = File(packDir, "tray.png")
+            if (existingPng.exists() && existingPng.length() > 0) return existingPng
+
+            val existingWebp = File(packDir, "tray.webp")
+            if (existingWebp.exists() && existingWebp.length() > 0) {
+                try {
+                    val bmp = android.graphics.BitmapFactory.decodeFile(existingWebp.absolutePath)
+                    if (bmp != null) {
+                        val scaled = scaleBitmap(bmp, StickerPackValidator.TRAY_SIZE_PX, StickerPackValidator.TRAY_SIZE_PX)
+                        val bytes = compressPng(scaled)
+                        FileOutputStream(existingPng).use { it.write(bytes) }
+                        return existingPng
+                    }
+                } catch (_: Exception) {
+                }
+            }
+
+            val pack = getPackDirect(packIdentifier)
+            val firstSticker = pack?.stickers?.firstOrNull()
+            if (firstSticker != null) {
+                val stickerFile = File(packDir, firstSticker.fileName)
+                if (stickerFile.exists()) {
+                    try {
+                        val bmp = android.graphics.BitmapFactory.decodeFile(stickerFile.absolutePath)
+                        if (bmp != null) {
+                            val scaled = scaleBitmap(bmp, StickerPackValidator.TRAY_SIZE_PX, StickerPackValidator.TRAY_SIZE_PX)
+                            val bytes = compressPng(scaled)
+                            val targetFile = File(packDir, "tray.png")
+                            FileOutputStream(targetFile).use { it.write(bytes) }
+                            return targetFile
+                        }
+                    } catch (_: Exception) {
+                    }
+                }
+            }
+        }
+        return null
     }
 
     override fun getAllPacksDirect(): List<StickerPack> {
@@ -311,6 +353,12 @@ class StickerRepositoryImpl(
             stream = ByteArrayOutputStream()
             bitmap.compress(format, quality, stream)
         }
+        return stream.toByteArray()
+    }
+
+    private fun compressPng(bitmap: Bitmap): ByteArray {
+        val stream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.PNG, 100, stream)
         return stream.toByteArray()
     }
 

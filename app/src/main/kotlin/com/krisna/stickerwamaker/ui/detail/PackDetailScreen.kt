@@ -107,7 +107,18 @@ fun PackDetailScreen(
         }
     }
 
-    fun exportToWhatsApp(type: WhatsAppType) {
+    val addStickerPackLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val validationError = result.data?.getStringExtra("validation_error")
+        if (!validationError.isNullOrBlank()) {
+            Toast.makeText(context, "WhatsApp error: $validationError", Toast.LENGTH_LONG).show()
+        } else if (result.resultCode == android.app.Activity.RESULT_OK) {
+            Toast.makeText(context, "Sticker pack added to WhatsApp!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun exportToWhatsApp(type: WhatsAppType?) {
         val currentPack = pack ?: return
         try {
             val intent = WhatsAppIntentHelper.createAddPackIntent(
@@ -116,23 +127,23 @@ fun PackDetailScreen(
                 packName = currentPack.name,
                 type = type
             )
-            context.startActivity(intent)
+            addStickerPackLauncher.launch(intent)
         } catch (e: Exception) {
-            Toast.makeText(context, "Failed to export: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Failed to launch WhatsApp: ${e.message}", Toast.LENGTH_SHORT).show()
         }
     }
 
     fun handleExportClick() {
         val installed = WhatsAppIntentHelper.getInstalledWhatsAppApps(context)
         when {
-            installed.isEmpty() -> {
-                Toast.makeText(context, "WhatsApp is not installed on this device", Toast.LENGTH_LONG).show()
-            }
             installed.size == 1 -> {
                 exportToWhatsApp(installed.first())
             }
-            else -> {
+            installed.size > 1 -> {
                 showWhatsAppChooserDialog = true
+            }
+            else -> {
+                exportToWhatsApp(null)
             }
         }
     }

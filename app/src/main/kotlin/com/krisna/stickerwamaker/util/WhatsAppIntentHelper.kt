@@ -3,6 +3,7 @@ package com.krisna.stickerwamaker.util
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.os.Build
 
 enum class WhatsAppType(val title: String, val packageName: String) {
     REGULAR("WhatsApp", "com.whatsapp"),
@@ -22,9 +23,14 @@ object WhatsAppIntentHelper {
     fun isAppInstalled(context: Context, packageName: String): Boolean {
         val packageManager = context.packageManager
         return try {
-            packageManager.getPackageInfo(packageName, PackageManager.GET_ACTIVITIES)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                packageManager.getPackageInfo(packageName, PackageManager.PackageInfoFlags.of(0))
+            } else {
+                @Suppress("DEPRECATION")
+                packageManager.getPackageInfo(packageName, 0)
+            }
             true
-        } catch (_: PackageManager.NameNotFoundException) {
+        } catch (_: Exception) {
             false
         }
     }
@@ -48,7 +54,7 @@ object WhatsAppIntentHelper {
         context: Context,
         packIdentifier: String,
         packName: String,
-        type: WhatsAppType = WhatsAppType.REGULAR
+        type: WhatsAppType? = WhatsAppType.REGULAR
     ): Intent {
         val authority = "${context.packageName}.stickercontentprovider"
 
@@ -57,7 +63,10 @@ object WhatsAppIntentHelper {
             putExtra(EXTRA_STICKER_PACK_ID, packIdentifier)
             putExtra(EXTRA_STICKER_PACK_AUTHORITY, authority)
             putExtra(EXTRA_STICKER_PACK_NAME, packName)
-            `package` = type.packageName
+            if (type != null) {
+                `package` = type.packageName
+            }
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
         }
     }
 }

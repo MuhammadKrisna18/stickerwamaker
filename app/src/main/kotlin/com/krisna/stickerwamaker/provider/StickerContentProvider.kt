@@ -21,8 +21,10 @@ class StickerContentProvider : ContentProvider() {
         val appContext = context ?: return false
         authority = "${appContext.packageName}.stickercontentprovider"
 
-        uriMatcher.addURI(authority, STICKER_PACKS, CODE_STICKER_PACKS)
-        uriMatcher.addURI(authority, "$STICKER_PACKS/*", CODE_STICKER_PACKS_WITH_ID)
+        uriMatcher.addURI(authority, METADATA, CODE_METADATA)
+        uriMatcher.addURI(authority, "$METADATA/*", CODE_METADATA_WITH_ID)
+        uriMatcher.addURI(authority, STICKER_PACKS, CODE_METADATA)
+        uriMatcher.addURI(authority, "$STICKER_PACKS/*", CODE_METADATA_WITH_ID)
         uriMatcher.addURI(authority, "$STICKERS/*", CODE_STICKERS)
         uriMatcher.addURI(authority, "$STICKERS_ASSET/*/*", CODE_STICKERS_ASSET)
 
@@ -40,11 +42,11 @@ class StickerContentProvider : ContentProvider() {
         val repo = StickerRepositoryImpl.getInstance(appContext)
 
         return when (uriMatcher.match(uri)) {
-            CODE_STICKER_PACKS -> {
+            CODE_METADATA -> {
                 val packs = repo.getAllPacksDirect().filter { it.canExportToWhatsApp }
                 createStickerPackCursor(packs)
             }
-            CODE_STICKER_PACKS_WITH_ID -> {
+            CODE_METADATA_WITH_ID -> {
                 val identifier = uri.lastPathSegment ?: return null
                 val pack = repo.getPackDirect(identifier)
                 if (pack != null && pack.canExportToWhatsApp) {
@@ -82,10 +84,17 @@ class StickerContentProvider : ContentProvider() {
 
     override fun getType(uri: Uri): String? {
         return when (uriMatcher.match(uri)) {
-            CODE_STICKER_PACKS -> "vnd.android.cursor.dir/vnd.$authority.$STICKER_PACKS"
-            CODE_STICKER_PACKS_WITH_ID -> "vnd.android.cursor.item/vnd.$authority.$STICKER_PACKS"
+            CODE_METADATA -> "vnd.android.cursor.dir/vnd.$authority.$METADATA"
+            CODE_METADATA_WITH_ID -> "vnd.android.cursor.item/vnd.$authority.$METADATA"
             CODE_STICKERS -> "vnd.android.cursor.dir/vnd.$authority.$STICKERS"
-            CODE_STICKERS_ASSET -> "image/webp"
+            CODE_STICKERS_ASSET -> {
+                val lastSegment = uri.lastPathSegment ?: ""
+                if (lastSegment.endsWith(".png", ignoreCase = true)) {
+                    "image/png"
+                } else {
+                    "image/webp"
+                }
+            }
             else -> null
         }
     }
@@ -99,12 +108,17 @@ class StickerContentProvider : ContentProvider() {
     private fun createStickerPackCursor(packs: List<StickerPack>): Cursor {
         val cursor = MatrixCursor(STICKER_PACK_COLUMNS)
         for (pack in packs) {
+            val trayIconFile = if (pack.trayImageFile.endsWith(".png", ignoreCase = true)) {
+                pack.trayImageFile
+            } else {
+                "tray.png"
+            }
             cursor.addRow(
                 arrayOf<Any>(
                     pack.identifier,
                     pack.name,
                     pack.publisher,
-                    pack.trayImageFile,
+                    trayIconFile,
                     "",
                     "",
                     pack.publisherEmail ?: "",
@@ -123,13 +137,16 @@ class StickerContentProvider : ContentProvider() {
     private fun createStickersCursor(pack: StickerPack): Cursor {
         val cursor = MatrixCursor(STICKER_COLUMNS)
         for (sticker in pack.stickers) {
+            val emojis = if (sticker.emojis.isNotEmpty()) {
+                sticker.emojis.joinToString(",")
+            } else {
+                "😀"
+            }
             cursor.addRow(
                 arrayOf<Any>(
                     sticker.fileName,
-                    "",
-                    if (pack.animatedStickerPack) 1 else 0,
-                    sticker.accessibilityText ?: "",
-                    sticker.emojis.joinToString(",")
+                    emojis,
+                    sticker.accessibilityText ?: ""
                 )
             )
         }
@@ -137,12 +154,13 @@ class StickerContentProvider : ContentProvider() {
     }
 
     companion object {
+        private const val METADATA = "metadata"
         private const val STICKER_PACKS = "sticker_packs"
         private const val STICKERS = "stickers"
         private const val STICKERS_ASSET = "stickers_asset"
 
-        private const val CODE_STICKER_PACKS = 1
-        private const val CODE_STICKER_PACKS_WITH_ID = 2
+        private const val CODE_METADATA = 1
+        private const val CODE_METADATA_WITH_ID = 2
         private const val CODE_STICKERS = 3
         private const val CODE_STICKERS_ASSET = 4
 
@@ -153,22 +171,19 @@ class StickerContentProvider : ContentProvider() {
             "sticker_pack_icon",
             "android_play_store_link",
             "ios_app_store_link",
-            "publisher_email",
-            "publisher_website",
-            "privacy_policy_website",
-            "license_agreement_website",
+            "sticker_pack_publisher_email",
+            "sticker_pack_publisher_website",
+            "sticker_pack_privacy_policy_website",
+            "sticker_pack_license_agreement_website",
             "image_data_version",
-            "avoid_cache",
+            "whatsapp_will_not_cache_stickers",
             "animated_sticker_pack"
         )
 
         private val STICKER_COLUMNS = arrayOf(
             "sticker_file_name",
-            "sticker_pack_animation_data",
-            "sticker_pack_animated_sticker_pack",
-            "sticker_pack_accessibility_text",
-            "sticker_pack_emojis"
+            "sticker_emoji",
+            "sticker_accessibility_text"
         )
     }
 }
-
