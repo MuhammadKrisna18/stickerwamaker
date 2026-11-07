@@ -1,5 +1,6 @@
 package com.krisna.stickerwamaker.ui.home
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.krisna.stickerwamaker.data.model.StickerPack
@@ -64,6 +65,17 @@ class HomeViewModel(
     fun deletePack(identifier: String) {
         viewModelScope.launch {
             repository.deleteStickerPack(identifier)
+        }
+    }
+
+    fun importPack(zipUri: Uri, onImported: (StickerPack) -> Unit) {
+        viewModelScope.launch {
+            _isCreating.value = true
+            val result = repository.importPackFromZip(zipUri)
+            _isCreating.value = false
+            result.onSuccess { pack ->
+                onImported(pack)
+            }
         }
     }
 }

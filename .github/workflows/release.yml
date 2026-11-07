@@ -39,8 +39,8 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          name: "Sticker WA Maker ${{ github.ref_name }}"
-          tag_name: ${{ github.ref_name }}
+          name: "Sticker WA Maker ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }}"
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || 'v1.0.0' }}
           files: release_apk/*.apk
           generate_release_notes: true
           draft: false

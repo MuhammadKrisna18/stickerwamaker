@@ -24,7 +24,10 @@ android {
         keyAlias = System.getenv("KEY_ALIAS")
         keyPassword = System.getenv("KEY_PASSWORD")
       } else {
-        initWith(getByName("debug"))
+        storeFile = file("release.jks")
+        storePassword = "stickerwamaker123"
+        keyAlias = "stickerwamaker"
+        keyPassword = "stickerwamaker123"
       }
     }
   }
