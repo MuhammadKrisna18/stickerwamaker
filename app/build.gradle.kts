@@ -6,11 +6,11 @@ plugins {
 
 android {
   namespace = "com.krisna.stickerwamaker"
-  compileSdk = 37
+  compileSdk = 36
   defaultConfig {
     applicationId = "com.krisna.stickerwamaker"
     minSdk = 24
-    targetSdk = 37
+    targetSdk = 35
     versionCode = 1
     versionName = "1.0.0"
   }
@@ -29,6 +29,8 @@ android {
         keyAlias = "stickerwamaker"
         keyPassword = "stickerwamaker123"
       }
+      enableV1Signing = true
+      enableV2Signing = true
     }
   }
 

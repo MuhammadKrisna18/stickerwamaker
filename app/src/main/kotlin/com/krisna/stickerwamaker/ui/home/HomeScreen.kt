@@ -143,6 +143,7 @@ fun HomeScreen(
             if (packs.isEmpty()) {
                 EmptyPacksView(
                     onCreateClick = { showCreateDialog = true },
+                    onImportClick = { importPackLauncher.launch("application/zip") },
                     modifier = Modifier.align(Alignment.Center)
                 )
             } else {
@@ -388,6 +389,7 @@ private fun StickerPackItem(
 @Composable
 private fun EmptyPacksView(
     onCreateClick: () -> Unit,
+    onImportClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     Column(
@@ -429,10 +431,17 @@ private fun EmptyPacksView(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Button(onClick = onCreateClick) {
-            Icon(imageVector = Icons.Default.Add, contentDescription = null)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Create First Pack")
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(onClick = onCreateClick) {
+                Icon(imageVector = Icons.Default.Add, contentDescription = null)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Create Pack")
+            }
+            OutlinedButton(onClick = onImportClick) {
+                Icon(imageVector = Icons.Default.FolderOpen, contentDescription = null)
+                Spacer(modifier = Modifier.width(6.dp))
+                Text("Import (.zip)")
+            }
         }
     }
 }
