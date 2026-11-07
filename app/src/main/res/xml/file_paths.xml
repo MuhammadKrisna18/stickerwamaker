@@ -1,6 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="shared_packs" path="packs/" />
+    <cache-path name="app_updates" path="updates/" />
     <files-path name="internal_packs" path="sticker_packs/" />
+    <external-files-path name="ext_downloads" path="." />
+    <external-cache-path name="ext_updates" path="updates/" />
 </paths>
-

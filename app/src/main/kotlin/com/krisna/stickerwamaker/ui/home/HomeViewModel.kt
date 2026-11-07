@@ -4,6 +4,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.krisna.stickerwamaker.data.model.StickerPack
 import com.krisna.stickerwamaker.data.repository.StickerRepository
+import com.krisna.stickerwamaker.updater.AppUpdateChecker
+import com.krisna.stickerwamaker.updater.AppUpdateInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,6 +27,29 @@ class HomeViewModel(
     private val _isCreating = MutableStateFlow(false)
     val isCreating: StateFlow<Boolean> = _isCreating.asStateFlow()
 
+    private val _updateInfo = MutableStateFlow<AppUpdateInfo?>(null)
+    val updateInfo: StateFlow<AppUpdateInfo?> = _updateInfo.asStateFlow()
+
+    init {
+        checkForUpdates()
+    }
+
+    fun checkForUpdates(onChecked: ((Boolean) -> Unit)? = null) {
+        viewModelScope.launch {
+            val result = AppUpdateChecker.checkForUpdate()
+            result.onSuccess { info ->
+                _updateInfo.value = if (info.isUpdateAvailable) info else null
+                onChecked?.invoke(info.isUpdateAvailable)
+            }.onFailure {
+                onChecked?.invoke(false)
+            }
+        }
+    }
+
+    fun dismissUpdateDialog() {
+        _updateInfo.value = null
+    }
+
     fun createPack(name: String, publisher: String, onCreated: (String) -> Unit = {}) {
         viewModelScope.launch {
             _isCreating.value = true
@@ -42,4 +67,3 @@ class HomeViewModel(
         }
     }
 }
-

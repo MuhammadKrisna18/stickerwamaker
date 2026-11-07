@@ -2,6 +2,7 @@ package com.krisna.stickerwamaker.data.repository
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.net.Uri
 import android.os.Build
 import com.krisna.stickerwamaker.data.model.StickerItem
 import com.krisna.stickerwamaker.data.model.StickerPack
@@ -210,6 +211,56 @@ class StickerRepositoryImpl(
                 savePackToDisk(updatedPack)
                 packsState.value = packsState.value.map { if (it.identifier == packIdentifier) updatedPack else it }
                 Unit
+            }
+        }
+    }
+
+    override suspend fun importPackFromZip(zipUri: Uri): Result<StickerPack> = withContext(ioDispatcher) {
+        mutex.withLock {
+            runCatching {
+                val inputStream = context.contentResolver.openInputStream(zipUri)
+                    ?: throw IllegalArgumentException("Cannot open zip stream")
+
+                val tempDir = File(context.cacheDir, "temp_import_${System.currentTimeMillis()}").apply { mkdirs() }
+
+                java.util.zip.ZipInputStream(inputStream).use { zis ->
+                    var entry = zis.nextEntry
+                    while (entry != null) {
+                        val file = File(tempDir, entry.name)
+                        FileOutputStream(file).use { fos ->
+                            zis.copyTo(fos)
+                        }
+                        zis.closeEntry()
+                        entry = zis.nextEntry
+                    }
+                }
+
+                val metaFile = File(tempDir, "metadata.json")
+                if (!metaFile.exists()) {
+                    tempDir.deleteRecursively()
+                    throw IllegalArgumentException("Invalid pack: metadata.json missing")
+                }
+
+                val originalPack = json.decodeFromString<StickerPack>(metaFile.readText())
+                val newIdentifier = UUID.randomUUID().toString()
+                val packDir = File(rootDir, newIdentifier).apply { mkdirs() }
+
+                tempDir.listFiles()?.forEach { file ->
+                    if (file.name != "metadata.json") {
+                        file.copyTo(File(packDir, file.name), overwrite = true)
+                    }
+                }
+
+                val importedPack = originalPack.copy(
+                    identifier = newIdentifier,
+                    name = "${originalPack.name} (Imported)"
+                )
+
+                savePackToDisk(importedPack)
+                tempDir.deleteRecursively()
+
+                packsState.value = (packsState.value + importedPack).sortedBy { it.name }
+                importedPack
             }
         }
     }

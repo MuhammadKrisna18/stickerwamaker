@@ -25,6 +25,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.SentimentSatisfiedAlt
+import androidx.compose.material.icons.filled.SystemUpdate
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -69,8 +70,10 @@ fun HomeScreen(
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel
 ) {
+    val context = LocalContext.current
     val packs by viewModel.stickerPacks.collectAsStateWithLifecycle()
     val isCreating by viewModel.isCreating.collectAsStateWithLifecycle()
+    val updateInfo by viewModel.updateInfo.collectAsStateWithLifecycle()
     var showCreateDialog by remember { mutableStateOf(false) }
     var packToDelete by remember { mutableStateOf<StickerPack?>(null) }
 
@@ -83,6 +86,19 @@ fun HomeScreen(
                         text = "Sticker WA Maker",
                         fontWeight = FontWeight.Bold
                     )
+                },
+                actions = {
+                    IconButton(
+                        onClick = {
+                            viewModel.checkForUpdates { hasUpdate ->
+                                if (!hasUpdate) {
+                                    android.widget.Toast.makeText(context, "App is up to date!", android.widget.Toast.LENGTH_SHORT).show()
+                                }
+                            }
+                        }
+                    ) {
+                        Icon(imageVector = Icons.Default.SystemUpdate, contentDescription = "Check for Update")
+                    }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.surfaceVariant,
@@ -165,6 +181,44 @@ fun HomeScreen(
                 }
             }
         )
+    }
+
+    updateInfo?.let { info ->
+        if (info.isUpdateAvailable) {
+            AlertDialog(
+                onDismissRequest = { viewModel.dismissUpdateDialog() },
+                title = { Text("Update Available (v${info.latestVersion}) 🚀") },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("A new version of Sticker WA Maker is ready to install.")
+                        Text(
+                            text = "Release Notes:\n${info.releaseNotes}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            viewModel.dismissUpdateDialog()
+                            com.krisna.stickerwamaker.updater.AppUpdateInstaller.downloadAndInstall(
+                                context,
+                                info.downloadUrl,
+                                info.latestVersion
+                            )
+                        }
+                    ) {
+                        Text("Update Now")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { viewModel.dismissUpdateDialog() }) {
+                        Text("Later")
+                    }
+                }
+            )
+        }
     }
 }
 

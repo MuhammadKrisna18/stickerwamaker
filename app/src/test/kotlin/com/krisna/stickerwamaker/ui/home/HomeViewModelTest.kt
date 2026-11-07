@@ -1,6 +1,7 @@
 package com.krisna.stickerwamaker.ui.home
 
 import android.graphics.Bitmap
+import android.net.Uri
 import com.krisna.stickerwamaker.data.model.StickerItem
 import com.krisna.stickerwamaker.data.model.StickerPack
 import com.krisna.stickerwamaker.data.repository.StickerRepository
@@ -136,6 +137,17 @@ private class FakeStickerRepository : StickerRepository {
     }
 
     override suspend fun updateTrayIcon(packIdentifier: String, bitmap: Bitmap): Result<Unit> = Result.success(Unit)
+
+    override suspend fun importPackFromZip(zipUri: Uri): Result<StickerPack> {
+        val newPack = StickerPack(
+            identifier = "id_imported",
+            name = "Imported Pack",
+            publisher = "Author",
+            trayImageFile = "tray.webp"
+        )
+        packs.value = packs.value + newPack
+        return Result.success(newPack)
+    }
 
     override fun getPackFile(packIdentifier: String, fileName: String): File? = null
 
