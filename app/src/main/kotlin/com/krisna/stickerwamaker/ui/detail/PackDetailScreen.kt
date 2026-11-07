@@ -75,6 +75,7 @@ import com.krisna.stickerwamaker.util.WhatsAppIntentHelper
 @Composable
 fun PackDetailScreen(
     onBackClick: () -> Unit,
+    onNavigateToEditor: (String) -> Unit,
     modifier: Modifier = Modifier,
     viewModel: PackDetailViewModel
 ) {
@@ -89,12 +90,7 @@ fun PackDetailScreen(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
         uri?.let {
-            val bitmap = BitmapUtils.loadBitmapFromUri(context, it)
-            if (bitmap != null) {
-                viewModel.addSticker(bitmap)
-            } else {
-                Toast.makeText(context, "Failed to load image", Toast.LENGTH_SHORT).show()
-            }
+            onNavigateToEditor(it.toString())
         }
     }
 

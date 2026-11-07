@@ -83,7 +83,8 @@ dependencies {
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
 
-  // Serialization & Image Loading
+  // Serialization & Image Loading & ML
   implementation(libs.kotlinx.serialization.json)
   implementation(libs.coil.compose)
+  implementation(libs.mlkit.segmentation.selfie)
 }

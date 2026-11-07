@@ -8,3 +8,6 @@ data object HomeRoute : NavKey
 
 @Serializable
 data class PackDetailRoute(val packIdentifier: String) : NavKey
+
+@Serializable
+data class EditorRoute(val packIdentifier: String, val imageUriString: String) : NavKey

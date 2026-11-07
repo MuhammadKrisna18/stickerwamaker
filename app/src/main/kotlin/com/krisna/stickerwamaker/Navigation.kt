@@ -1,5 +1,6 @@
 package com.krisna.stickerwamaker
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
@@ -10,8 +11,11 @@ import androidx.navigation3.ui.NavDisplay
 import com.krisna.stickerwamaker.data.repository.StickerRepositoryImpl
 import com.krisna.stickerwamaker.ui.detail.PackDetailScreen
 import com.krisna.stickerwamaker.ui.detail.PackDetailViewModel
+import com.krisna.stickerwamaker.ui.editor.StickerEditorScreen
+import com.krisna.stickerwamaker.ui.editor.StickerEditorViewModel
 import com.krisna.stickerwamaker.ui.home.HomeScreen
 import com.krisna.stickerwamaker.ui.home.HomeViewModel
+import com.krisna.stickerwamaker.util.BitmapUtils
 
 @Composable
 fun MainNavigation() {
@@ -38,8 +42,33 @@ fun MainNavigation() {
                 }
                 PackDetailScreen(
                     onBackClick = { backStack.removeLastOrNull() },
+                    onNavigateToEditor = { uriString ->
+                        backStack.add(EditorRoute(route.packIdentifier, uriString))
+                    },
                     viewModel = detailViewModel
                 )
+            }
+            entry<EditorRoute> { route ->
+                val uri = Uri.parse(route.imageUriString)
+                val bitmap = remember(route.imageUriString) {
+                    BitmapUtils.loadBitmapFromUri(context, uri)
+                }
+                if (bitmap != null) {
+                    val editorViewModel = viewModel(key = "${route.packIdentifier}_${route.imageUriString}") {
+                        StickerEditorViewModel(
+                            packIdentifier = route.packIdentifier,
+                            initialBitmap = bitmap,
+                            repository = repository
+                        )
+                    }
+                    StickerEditorScreen(
+                        onBackClick = { backStack.removeLastOrNull() },
+                        onSaved = { backStack.removeLastOrNull() },
+                        viewModel = editorViewModel
+                    )
+                } else {
+                    backStack.removeLastOrNull()
+                }
             }
         }
     )
