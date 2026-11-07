@@ -4,6 +4,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 
+enum class WhatsAppType(val title: String, val packageName: String) {
+    REGULAR("WhatsApp", "com.whatsapp"),
+    BUSINESS("WhatsApp Business", "com.whatsapp.w4b")
+}
+
 object WhatsAppIntentHelper {
 
     const val PACKAGE_WHATSAPP = "com.whatsapp"
@@ -24,26 +29,35 @@ object WhatsAppIntentHelper {
         }
     }
 
+    fun getInstalledWhatsAppApps(context: Context): List<WhatsAppType> {
+        val list = mutableListOf<WhatsAppType>()
+        if (isAppInstalled(context, PACKAGE_WHATSAPP)) {
+            list.add(WhatsAppType.REGULAR)
+        }
+        if (isAppInstalled(context, PACKAGE_WHATSAPP_BUSINESS)) {
+            list.add(WhatsAppType.BUSINESS)
+        }
+        return list
+    }
+
     fun isAnyWhatsAppInstalled(context: Context): Boolean {
-        return isAppInstalled(context, PACKAGE_WHATSAPP) || isAppInstalled(context, PACKAGE_WHATSAPP_BUSINESS)
+        return getInstalledWhatsAppApps(context).isNotEmpty()
     }
 
     fun createAddPackIntent(
         context: Context,
         packIdentifier: String,
         packName: String,
-        useBusiness: Boolean = false
+        type: WhatsAppType = WhatsAppType.REGULAR
     ): Intent {
         val authority = "${context.packageName}.stickercontentprovider"
-        val targetPackage = if (useBusiness) PACKAGE_WHATSAPP_BUSINESS else PACKAGE_WHATSAPP
 
         return Intent().apply {
             action = ACTION_ENABLE_STICKER_PACK
             putExtra(EXTRA_STICKER_PACK_ID, packIdentifier)
             putExtra(EXTRA_STICKER_PACK_AUTHORITY, authority)
             putExtra(EXTRA_STICKER_PACK_NAME, packName)
-            `package` = targetPackage
+            `package` = type.packageName
         }
     }
 }
-

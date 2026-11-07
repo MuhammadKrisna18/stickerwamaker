@@ -1,10 +1,12 @@
 package com.krisna.stickerwamaker.ui.detail
 
+import android.content.Context
 import android.graphics.Bitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.krisna.stickerwamaker.data.model.StickerPack
 import com.krisna.stickerwamaker.data.repository.StickerRepository
+import com.krisna.stickerwamaker.util.StickerPackBackupHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -65,5 +67,13 @@ class PackDetailViewModel(
             _isProcessing.value = false
         }
     }
-}
 
+    fun exportPack(context: Context, onReady: (File) -> Unit) {
+        viewModelScope.launch {
+            _isProcessing.value = true
+            val result = StickerPackBackupHelper.exportPackToZip(context, packIdentifier, repository)
+            _isProcessing.value = false
+            result.onSuccess { onReady(it) }
+        }
+    }
+}

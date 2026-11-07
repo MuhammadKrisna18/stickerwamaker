@@ -5,7 +5,6 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -69,7 +68,9 @@ import com.krisna.stickerwamaker.data.model.StickerItem
 import com.krisna.stickerwamaker.data.model.StickerPack
 import com.krisna.stickerwamaker.data.model.StickerPackValidator
 import com.krisna.stickerwamaker.util.BitmapUtils
+import com.krisna.stickerwamaker.util.StickerPackBackupHelper
 import com.krisna.stickerwamaker.util.WhatsAppIntentHelper
+import com.krisna.stickerwamaker.util.WhatsAppType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -85,6 +86,7 @@ fun PackDetailScreen(
 
     var showDeletePackDialog by remember { mutableStateOf(false) }
     var selectedSticker by remember { mutableStateOf<StickerItem?>(null) }
+    var showWhatsAppChooserDialog by remember { mutableStateOf(false) }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -101,6 +103,36 @@ fun PackDetailScreen(
             val bitmap = BitmapUtils.loadBitmapFromUri(context, it)
             if (bitmap != null) {
                 viewModel.updateTrayIcon(bitmap)
+            }
+        }
+    }
+
+    fun exportToWhatsApp(type: WhatsAppType) {
+        val currentPack = pack ?: return
+        try {
+            val intent = WhatsAppIntentHelper.createAddPackIntent(
+                context = context,
+                packIdentifier = currentPack.identifier,
+                packName = currentPack.name,
+                type = type
+            )
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            Toast.makeText(context, "Failed to export: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    fun handleExportClick() {
+        val installed = WhatsAppIntentHelper.getInstalledWhatsAppApps(context)
+        when {
+            installed.isEmpty() -> {
+                Toast.makeText(context, "WhatsApp is not installed on this device", Toast.LENGTH_LONG).show()
+            }
+            installed.size == 1 -> {
+                exportToWhatsApp(installed.first())
+            }
+            else -> {
+                showWhatsAppChooserDialog = true
             }
         }
     }
@@ -124,6 +156,21 @@ fun PackDetailScreen(
                     }
                 },
                 actions = {
+                    IconButton(
+                        onClick = {
+                            viewModel.exportPack(context) { file ->
+                                val shareIntent = StickerPackBackupHelper.createShareIntent(context, file)
+                                context.startActivity(
+                                    android.content.Intent.createChooser(shareIntent, "Share Sticker Pack")
+                                )
+                            }
+                        }
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Share,
+                            contentDescription = "Share Pack Backup"
+                        )
+                    }
                     IconButton(onClick = { showDeletePackDialog = true }) {
                         Icon(
                             imageVector = Icons.Default.Delete,
@@ -171,30 +218,7 @@ fun PackDetailScreen(
                                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                                 )
                             },
-                            onExportToWhatsApp = {
-                                if (!WhatsAppIntentHelper.isAnyWhatsAppInstalled(context)) {
-                                    Toast.makeText(
-                                        context,
-                                        "WhatsApp is not installed on this device",
-                                        Toast.LENGTH_LONG
-                                    ).show()
-                                } else {
-                                    try {
-                                        val intent = WhatsAppIntentHelper.createAddPackIntent(
-                                            context = context,
-                                            packIdentifier = currentPack.identifier,
-                                            packName = currentPack.name
-                                        )
-                                        context.startActivity(intent)
-                                    } catch (e: Exception) {
-                                        Toast.makeText(
-                                            context,
-                                            "Failed to export: ${e.message}",
-                                            Toast.LENGTH_SHORT
-                                        ).show()
-                                    }
-                                }
-                            }
+                            onExportToWhatsApp = { handleExportClick() }
                         )
                     }
 
@@ -231,6 +255,41 @@ fun PackDetailScreen(
                 }
             }
         }
+    }
+
+    if (showWhatsAppChooserDialog) {
+        AlertDialog(
+            onDismissRequest = { showWhatsAppChooserDialog = false },
+            title = { Text("Choose WhatsApp App") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    WhatsAppType.values().forEach { type ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    showWhatsAppChooserDialog = false
+                                    exportToWhatsApp(type)
+                                },
+                            shape = RoundedCornerShape(10.dp),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                        ) {
+                            Text(
+                                text = type.title,
+                                modifier = Modifier.padding(14.dp),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { showWhatsAppChooserDialog = false }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 
     selectedSticker?.let { sticker ->
@@ -501,4 +560,3 @@ private fun StickerGridItem(
         }
     }
 }
-
