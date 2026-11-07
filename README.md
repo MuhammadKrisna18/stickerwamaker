@@ -44,3 +44,4 @@ Created out of frustration with existing sticker maker apps on the Play Store th
 
 ## 📄 License
 This project is open-source and available under the [MIT License](LICENSE).
+
