@@ -1,7 +1,11 @@
 package com.krisna.stickerwamaker.ui.editor
 
 import android.graphics.Bitmap
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.krisna.stickerwamaker.data.repository.StickerRepository
@@ -31,6 +35,9 @@ class StickerEditorViewModel(
     private val _isCutoutEnabled = MutableStateFlow(false)
     val isCutoutEnabled: StateFlow<Boolean> = _isCutoutEnabled.asStateFlow()
 
+    private val _isCircleCrop = MutableStateFlow(false)
+    val isCircleCrop: StateFlow<Boolean> = _isCircleCrop.asStateFlow()
+
     private val _hasOutline = MutableStateFlow(false)
     val hasOutline: StateFlow<Boolean> = _hasOutline.asStateFlow()
 
@@ -46,6 +53,9 @@ class StickerEditorViewModel(
     private val _textPositionTop = MutableStateFlow(false)
     val textPositionTop: StateFlow<Boolean> = _textPositionTop.asStateFlow()
 
+    private val _selectedEmojis = MutableStateFlow<List<String>>(emptyList())
+    val selectedEmojis: StateFlow<List<String>> = _selectedEmojis.asStateFlow()
+
     private val _isProcessing = MutableStateFlow(false)
     val isProcessing: StateFlow<Boolean> = _isProcessing.asStateFlow()
 
@@ -53,6 +63,13 @@ class StickerEditorViewModel(
 
     fun toggleCutout(enabled: Boolean) {
         _isCutoutEnabled.value = enabled
+        if (enabled) _isCircleCrop.value = false
+        recomputePreview()
+    }
+
+    fun toggleCircleCrop(enabled: Boolean) {
+        _isCircleCrop.value = enabled
+        if (enabled) _isCutoutEnabled.value = false
         recomputePreview()
     }
 
@@ -81,6 +98,15 @@ class StickerEditorViewModel(
         recomputePreview()
     }
 
+    fun toggleEmoji(emoji: String) {
+        val current = _selectedEmojis.value
+        if (current.contains(emoji)) {
+            _selectedEmojis.value = current - emoji
+        } else if (current.size < 3) {
+            _selectedEmojis.value = current + emoji
+        }
+    }
+
     private fun recomputePreview() {
         viewModelScope.launch {
             _isProcessing.value = true
@@ -90,6 +116,19 @@ class StickerEditorViewModel(
                     cachedCutoutBitmap = backgroundRemover.removeBackground(initialBitmap)
                 }
                 cachedCutoutBitmap ?: initialBitmap
+            } else if (_isCircleCrop.value) {
+                withContext(Dispatchers.Default) {
+                    val size = minOf(initialBitmap.width, initialBitmap.height)
+                    val out = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+                    val canvas = Canvas(out)
+                    val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+                    canvas.drawCircle(size / 2f, size / 2f, size / 2f, paint)
+                    paint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_IN)
+                    val left = (initialBitmap.width - size) / 2
+                    val top = (initialBitmap.height - size) / 2
+                    canvas.drawBitmap(initialBitmap, -left.toFloat(), -top.toFloat(), paint)
+                    out
+                }
             } else {
                 initialBitmap
             }
@@ -127,10 +166,9 @@ class StickerEditorViewModel(
         viewModelScope.launch {
             _isProcessing.value = true
             val bitmapToSave = _previewBitmap.value ?: initialBitmap
-            repository.addSticker(packIdentifier, bitmapToSave)
+            repository.addSticker(packIdentifier, bitmapToSave, _selectedEmojis.value)
             _isProcessing.value = false
             onSaved()
         }
     }
 }
-
